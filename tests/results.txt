@@ -1,0 +1,1 @@
+TC-DISCOUNT-001: PASS - applied SAVE15 and page showed 'Discount applied: 15%'.

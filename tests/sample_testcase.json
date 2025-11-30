@@ -1,0 +1,17 @@
+{
+    "Test_ID":  "TC-DISCOUNT-001",
+    "Feature":  "Discount Code",
+    "Test_Scenario":  "Valid discount code SAVE15 applies correct discount",
+    "Test_Steps":  [
+                       "Open the checkout page.",
+                       "Add items totaling $50 to the cart.",
+                       "Enter discount code \u0027SAVE15\u0027 in the coupon field.",
+                       "Apply the coupon."
+                   ],
+    "Preconditions":  "Cart subtotal \u003e= $50",
+    "Expected_Result":  "Order total is reduced by 15%.",
+    "Type":  "Positive",
+    "Grounded_In":  [
+                        "example.txt"
+                    ]
+}

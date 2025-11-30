@@ -1,0 +1,70 @@
+# backend/app.py
+import os
+from fastapi import FastAPI, HTTPException
+from pydantic import BaseModel
+from backend.retrieval import retrieve_topk, build_rag_prompt, call_llm
+from pydantic import BaseModel
+from backend.agent_tools import generate_test_cases_from_context, generate_selenium_script_html
+
+
+
+
+app = FastAPI(title="RAG QA Agent - Simple API")
+
+class QueryRequest(BaseModel):
+    query: str
+    top_k: int = 3
+    use_llm: bool = True   # if false, only return retrieved chunks without calling LLM
+
+@app.post("/query_agent")
+def query_agent(payload: QueryRequest):
+    # 1) retrieve top-k chunks
+    retrieved = retrieve_topk(payload.query, top_k=payload.top_k)
+
+    if not retrieved:
+        return {"status": "no_context", "message": "No relevant documents found in the knowledge base.", "retrieved": []}
+
+    # 2) if user requested only retrieval, return the chunks
+    if not payload.use_llm:
+        return {"status": "ok", "retrieved": retrieved}
+
+    # 3) build RAG prompt
+    prompt = build_rag_prompt(payload.query, retrieved)
+
+    # 4) call LLM
+    llm_res = call_llm(prompt)
+    if not llm_res.get("ok"):
+        raise HTTPException(status_code=500, detail={"error": llm_res.get("error"), "retrieved": retrieved})
+
+    return {"status": "ok", "answer": llm_res.get("answer"), "retrieved": retrieved}
+# in backend/app.py (add imports at top)
+
+
+# Add Pydantic models
+class TestcaseRequest(BaseModel):
+    query: str
+    top_k: int = 3
+
+class ScriptRequest(BaseModel):
+    test_case: dict
+    checkout_html: str
+    html_path: str  # file:// path or http URL where the HTML will be served
+
+# Endpoint to generate test cases (deterministic, grounded)
+@app.post("/generate_testcases")
+def generate_testcases(payload: TestcaseRequest):
+    retrieved = retrieve_topk(payload.query, top_k=payload.top_k)
+    if not retrieved:
+        return {"status": "no_context", "retrieved": []}
+    testcases = generate_test_cases_from_context(payload.query, retrieved)
+    return {"status": "ok", "testcases": testcases, "retrieved": retrieved}
+
+# Endpoint to generate a selenium script template for a selected test case
+@app.post("/generate_script")
+def generate_script(payload: ScriptRequest):
+    # payload.test_case should be one of the testcases returned above
+    # payload.checkout_html must be the full HTML content (string)
+    # payload.html_path should be a file:// or http URL the user will use locally (update as needed)
+    script_text = generate_selenium_script_html(payload.test_case, payload.checkout_html, payload.html_path)
+    return {"status": "ok", "script": script_text}
+
