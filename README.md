@@ -1,320 +1,248 @@
-﻿# Ocean.AI — End-to-end RAG + Selenium Test Generator
+# Ocean.AI — RAG Testcase & Script Demo
 
-**Status:** Working — ingestion, retrieval, testcase generation, Selenium script generation and local execution are all functional on your machine.
-
-This README documents everything you need to reproduce, run, maintain, and extend the project on Windows (PowerShell) and includes file snippets you can copy-paste.
-
----
-
-## Project overview
-
-Ocean.AI builds a Retrieval-Augmented Generation (RAG) testing assistant:
-
-* Ingest assets (text, HTML) into a vector store (Chroma).
-* Query the knowledge base to generate grounded testcases.
-* Generate Selenium Python test scripts from testcases + checkout HTML.
-* Run the generated Selenium scripts locally (or headless) to validate.
-
-Core folders/files:
-
-```
-backend/          # FastAPI backend that serves ingestion, retrieval, and generation endpoints
-streamlit_ui/     # Streamlit frontend for easy interaction
-assets/           # example assets (example.txt, checkout.html)
-tests/            # generated and sample testcases/scripts
-```
+> A lightweight end‑to‑end RAG + Automation demo that:
+>
+> * ingests text/HTML assets into a local Chroma vector DB
+> * retrieves grounding chunks for a query
+> * generates grounded testcases (discounts, shipping, etc.)
+> * generates runnable Selenium test scripts from a selected testcase (local or via backend)
+>
+> This README is ready for your repository.
 
 ---
 
-## Quick setup (Windows PowerShell)
+## **1. Features**
 
-Run these commands from project root `D:\a last chancce\Ocean.AI`.
+* Local ingestion into Chroma vector DB using Sentence Transformers.
+* RAG-style retrieval for nearest grounding chunks.
+* Fully deterministic rule-based testcase generator (no paid LLM required).
+* Selenium script generator that auto-detects coupon inputs in checkout HTML.
+* Streamlit UI for uploading files, ingestion, querying, testcase and script generation.
+* Optional LLM toggle for expansion (if user later adds API keys).
 
-1. Activate your virtual env (you already created `.venv`):
+---
 
-```powershell
-.\.venv\Scripts\Activate.ps1
+## **2. Project Architecture**
+
+```
+[Streamlit UI]  <-->  [FastAPI Backend]
+                        |
+                        +--> [Chroma Vector DB]
+                        +--> [Retrieval + RAG]
+                        +--> [agent_tools.py]
+                        +--> [Selenium Script Generator]
 ```
 
-2. Install Python dependencies (if you don't already have them):
+---
 
-```powershell
+## **3. Requirements**
+
+### **System**
+
+* Windows / macOS / Linux
+* Python 3.10+ recommended
+* Google Chrome (for Selenium execution)
+
+### **Python Dependencies**
+
+Installed using:
+
+```
 pip install -r requirements.txt
 ```
 
-If you don't have `requirements.txt` yet, create it with this content (save as file):
+Major packages:
+
+* FastAPI
+* Uvicorn
+* Streamlit
+* ChromaDB
+* Sentence-Transformers
+* Selenium
+* Webdriver-Manager
+* BeautifulSoup4
+
+---
+
+## **4. Folder Structure**
 
 ```
-fastapi
-uvicorn[standard]
-chromadb
-sentence-transformers
-transformers
-streamlit
-requests
-beautifulsoup4
-selenium
-webdriver-manager
-python-dotenv
-```
-
-To write it quickly from PowerShell:
-
-```powershell
-@'
-fastapi
-uvicorn[standard]
-chromadb
-sentence-transformers
-transformers
-streamlit
-requests
-beautifulsoup4
-selenium
-webdriver-manager
-python-dotenv
-'@ | Set-Content requirements.txt -Encoding UTF8
-```
-
-3. Create `.gitignore` (recommended):
-
-```powershell
-@'
-.venv/
-__pycache__/
-*.pyc
-*.pyo
-*.pyd
-.env
-.env.local
-*.sqlite
-chroma_db/
-.DS_Store
-.vscode/
-'@ | Set-Content .gitignore -Encoding UTF8
+Ocean.AI/
+├── assets/                 # uploaded HTML/TXT files
+│   ├── example.txt
+│   └── checkout.html
+│
+├── backend/
+│   ├── app.py              # FastAPI endpoints
+│   ├── ingest_runner.py    # ingestion script
+│   ├── retrieval.py        # RAG retrieval logic
+│   ├── vector_store.py     # Chroma handling
+│   └── agent_tools.py      # testcase + script generator
+│
+├── streamlit_ui/
+│   └── app.py              # Streamlit UI
+│
+├── tests/
+│   └── generated_test_*.py # generated selenium tests
+│
+├── chroma_db/              # persisted vector DB
+├── requirements.txt
+└── README.md
 ```
 
 ---
 
-## Run the backend (development)
+## **5. Local Setup (Windows)**
 
-Start the backend in a separate terminal so Streamlit can call it:
+### **1. Create Virtual Environment**
 
-```powershell
+```
+python -m venv .venv
 .\.venv\Scripts\Activate.ps1
+python -m pip install --upgrade pip
+pip install -r requirements.txt
+```
+
+### **2. Start Backend**
+
+```
 uvicorn backend.app:app --reload --port 8000
 ```
 
-Look for:
+### **3. Start UI**
+
+Open a second terminal:
 
 ```
-Uvicorn running on http://127.0.0.1:8000
-Application startup complete.
-```
-
-If you get import errors like `ModuleNotFoundError` for local modules, make sure you run `uvicorn` from the project root and that `backend/` is a package (there is an `__init__.py` file in `backend/`).
-
----
-
-## Use the Streamlit UI
-
-Run Streamlit (in another terminal):
-
-```powershell
 .\.venv\Scripts\Activate.ps1
 streamlit run streamlit_ui/app.py
 ```
 
-Open `http://localhost:8501`.
+UI opens at: **[http://localhost:8501](http://localhost:8501)**
 
-### Common Streamlit issues
+---
 
-* `StreamlitSecretNotFoundError: No secrets found.` — Create `.streamlit/secrets.toml` or set Streamlit secrets in `streamlit_ui/.streamlit/secrets.toml`:
+## **6. Phase-based Workflow**
+
+### **Phase 1 — Upload Assets**
+
+Upload files like:
+
+* `checkout.html`
+* `example.txt`
+
+### **Phase 2 — Ingest**
+
+Click **Ingest saved assets now** in the UI.
+Backend loads files → extracts chunks → stores embeddings in Chroma.
+
+### **Phase 3 — Generate Testcases**
+
+Enter query such as:
 
 ```
-[default]
-backend_url = "http://127.0.0.1:8000"
+discount code
 ```
 
-* If Streamlit shows a syntax error on `BACKEND_URL`, open `streamlit_ui/app.py` and ensure the line uses normal double quotes without backslashes:
+View:
 
-```python
-BACKEND_URL = "http://127.0.0.1:8000"
+* Retrieved chunks
+* Generated testcases
+
+### **Phase 4 — Generate Selenium Script**
+
+Select a testcase → paste checkout HTML (or use assets) → click generate.
+Download generated script automatically.
+
+### **Phase 5 — Run Script**
+
+From terminal:
+
+```
+python tests/generated_test_<ID>.py
+```
+
+You should see:
+
+```
+TEST PASSED: Discount message found on page.
 ```
 
 ---
 
-## Ingest assets (via UI or CLI)
+## **7. API Examples**
 
-### UI method (recommended)
-
-1. Upload `example.txt` and `checkout.html` through the sidebar upload control.
-2. Click **Ingest saved assets now**.
-3. Observe ingestion output in the UI — you should see `Ingest result: {'status': 'ok', 'added': N}`.
-
-### CLI method (local)
-
-```powershell
-python backend/ingest_runner.py assets/example.txt
-```
-
-Output example:
+### **Generate Testcases**
 
 ```
-Parsing: D:\a last chancce\Ocean.AI\assets\example.txt
-Encoding 1 chunks with model all-MiniLM-L6-v2 ...
-Adding 1 chunks to Chroma collection 'knowledge_base' (persist dir: ./chroma_db) ...
-Ingest result: {'status': 'ok', 'added': 1}
+curl -X POST http://127.0.0.1:8000/generate_testcases \
+  -H "Content-Type: application/json" \
+  -d '{"query":"discount code","top_k":3}'
+```
+
+### **Generate Script (PowerShell)**
+
+Create `payload.json` and call:
+
+```
+Invoke-RestMethod -Uri "http://127.0.0.1:8000/generate_script" -Method Post -Body (Get-Content payload.json -Raw) -ContentType "application/json"
 ```
 
 ---
 
-## Generate testcases (UI) — steps
+## **8. Deployment Options**
 
-1. In **Query & Generate Testcases** enter `discount code` and `Top k = 3` and click **Generate Testcases**.
-2. You should see retrieved chunks and generated testcases in the right column.
-3. Click on the testcase index to select a testcase.
+### **Streamlit Cloud + Render Backend**
 
-If generation produces results, they will be saved to `tests/sample_testcase.json`.
+* Deploy backend to Render/Railway/Fly.io
+* Deploy Streamlit UI to Streamlit Cloud
+* Set `backend_url` in `.streamlit/secrets.toml`:
 
----
-
-## Generate Selenium script (UI or API)
-
-You can paste full `checkout.html` content into the UI textarea under **Generate Selenium Script from Selected Testcase** and click **Generate Script via backend API** — the backend will return a script and save it under `tests/`.
-
-Alternatively, use the client `call_generate_script.py` to POST the testcase and html and receive the script. Example client was provided in the repo as `call_generate_script.py`.
-
----
-
-## Running the generated test script
-
-To run the generated script (opens Chrome):
-
-```powershell
-python tests/generated_test_from_api.py
+```
+backend_url = "https://your-backend.onrender.com"
 ```
 
-To run headless (no visible browser), edit the top of the script and enable these flags before running:
+### **Docker (optional)**
 
-```python
-options.add_argument("--headless=new")
-options.add_argument("--disable-gpu")
+A Dockerfile can be added for full container-based deploy.
+
+---
+
+## **9. Troubleshooting**
+
+### ❌ Backend connection refused
+
+Backend not running. Run:
+
 ```
-
----
-
-## Troubleshooting
-
-**`script: null` in API response** — means the generator returned `None` because it could not detect coupon input or build a script. Fixes:
-
-* Paste the full checkout HTML into the UI's HTML textbox (ensures the backend receives the HTML string).
-* Ensure input has `id`/`name`/`placeholder` with keywords like `coupon`, `discount`, `apply`.
-* As fallback, use the local generator `generate_script_local.py` or the `debug_generate.py` tool.
-
-**Chroma migration error** — `ValueError: You are using a deprecated configuration of Chroma.`
-
-* If you are migrating from an older Chroma, follow docs at [https://docs.trychroma.com/deployment/migration](https://docs.trychroma.com/deployment/migration) or install `chroma-migrate`.
-* If empty DB, change client construction to the newer Chroma client pattern in `backend/vector_store.py`.
-
-**Selenium driver errors** — prefer using the Service + `webdriver-manager` approach used in generated scripts. If Chrome not found, ensure Chrome is installed or set `CHROME_PATH` appropriately.
-
----
-
-## Quick CI example (GitHub Actions)
-
-Create `.github/workflows/run-tests.yml` with this minimal job:
-
-```yaml
-name: Run generated selenium tests
-on: [push]
-jobs:
-  test:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Set up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: '3.11'
-      - name: Install deps
-        run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
-      - name: Run backend (background)
-        run: |
-          uvicorn backend.app:app --port 8000 &
-          sleep 3
-      - name: Generate script and run (example)
-        run: |
-          python call_generate_script.py
-          python tests/generated_test_from_api.py
-```
-
-Note: Running full browser automation on GitHub-hosted runners requires either headless mode or a runner image with a browser.
-
----
-
-## Security & keys
-
-* The app can optionally call an LLM (OpenAI) if `OPENAI_API_KEY` is set in your environment. If you do not want to use OpenAI, do not set the key — the generator has a local fallback.
-* To set env vars (PowerShell):
-
-```powershell
-$env:OPENAI_API_KEY = "sk-..."
-```
-
-Or place values in `.env` and load them with `python-dotenv` in the backend.
-
----
-
-## Next recommended steps (pick one)
-
-1. Add **Download Script** button in Streamlit UI (one-line UI change).
-2. Auto-run generated script from UI and show PASS/FAIL.
-3. Create a `requirements.txt` and `.gitignore` and commit to GitHub.
-4. Add a simple CI workflow.
-
----
-
-## Helpful commands summary (copy/paste)
-
-Activate venv:
-
-```powershell
-.\.venv\Scripts\Activate.ps1
-```
-
-Start backend:
-
-```powershell
 uvicorn backend.app:app --reload --port 8000
 ```
 
-Run Streamlit UI:
+### ❌ Script returned None
 
-```powershell
-streamlit run streamlit_ui/app.py
+Your HTML file does not contain coupon input fields like:
+
+```
+<input id="coupon_input">
+<button id="apply_coupon">
 ```
 
-Ingest a file locally:
+Add them or paste correct HTML.
 
-```powershell
-python backend/ingest_runner.py assets/example.txt
+### ❌ Unexpected UTF-8 BOM
+
+Re-save file using:
+
+```
+[System.IO.File]::WriteAllText("file.json", (Get-Content file.json -Raw), (New-Object System.Text.UTF8Encoding($false)))
 ```
 
-Generate script via API (client):
+### ❌ Selenium driver not working
 
-```powershell
-python call_generate_script.py
-```
-
-Run generated script:
-
-```powershell
-python tests/generated_test_from_api.py
-```
+Update Chrome or Webdriver-Manager.
 
 ---
 
-Made by: Abhishek Yadav
+
+
+
