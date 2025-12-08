@@ -190,58 +190,9 @@ Invoke-RestMethod -Uri "http://127.0.0.1:8000/generate_script" -Method Post -Bod
 
 ---
 
-## **8. Deployment Options**
-
-### **Streamlit Cloud + Render Backend**
-
-* Deploy backend to Render/Railway/Fly.io
-* Deploy Streamlit UI to Streamlit Cloud
-* Set `backend_url` in `.streamlit/secrets.toml`:
-
-```
-backend_url = "https://your-backend.onrender.com"
-```
-
-### **Docker (optional)**
-
-A Dockerfile can be added for full container-based deploy.
 
 ---
 
-## **9. Troubleshooting**
-
-### ❌ Backend connection refused
-
-Backend not running. Run:
-
-```
-uvicorn backend.app:app --reload --port 8000
-```
-
-### ❌ Script returned None
-
-Your HTML file does not contain coupon input fields like:
-
-```
-<input id="coupon_input">
-<button id="apply_coupon">
-```
-
-Add them or paste correct HTML.
-
-### ❌ Unexpected UTF-8 BOM
-
-Re-save file using:
-
-```
-[System.IO.File]::WriteAllText("file.json", (Get-Content file.json -Raw), (New-Object System.Text.UTF8Encoding($false)))
-```
-
-### ❌ Selenium driver not working
-
-Update Chrome or Webdriver-Manager.
-
----
 
 
 
